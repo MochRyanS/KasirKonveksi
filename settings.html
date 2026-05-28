@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pengaturan - KASIR KONVEKSI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/components.css">
+</head>
+
+<body>
+    <div id="sidebarContainer"></div>
+    <div class="main-content">
+        <div id="navbarContainer"></div>
+        <div class="content-area">
+            <h1>Pengaturan Toko</h1>
+            <p style="margin-bottom: 24px; color: var(--text-secondary);">Atur profil dan logo toko Anda</p>
+
+            <div class="card" style="max-width: 700px;">
+                <div class="card-body">
+                    <form id="settingsForm" onsubmit="Settings.save(event)">
+
+                        <!-- Upload Logo -->
+                        <div class="form-group">
+                            <label class="form-label">Logo Toko (untuk Struk)</label>
+                            <div style="display:flex; align-items:center; gap:20px;">
+                                <img id="logoPreview" src=""
+                                    style="width:80px; height:80px; object-fit:contain; background:var(--bg-tertiary); border-radius:8px; display:none;">
+                                <div>
+                                    <input type="file" id="logoInput" accept="image/*" style="display:none"
+                                        onchange="Settings.previewLogo(this)">
+                                    <button type="button" class="btn btn-secondary"
+                                        onclick="document.getElementById('logoInput').click()">
+                                        Upload Logo
+                                    </button>
+                                    <p style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Format
+                                        PNG/JPG, Max 2MB</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Nama Toko</label>
+                            <input type="text" class="form-input" name="storeName" placeholder="KONVEKSI PRO">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Alamat</label>
+                            <textarea class="form-input" name="storeAddress" rows="2"></textarea>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">No. Telepon</label>
+                                <input type="text" class="form-input" name="storePhone">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">WhatsApp</label>
+                                <input type="text" class="form-input" name="storeWhatsapp" placeholder="628xxx">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" style="margin-top:16px;">Simpan Perubahan</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div id="mobileNavContainer"></div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <script src="js/storage.js"></script>
+    <script src="js/components.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        const Settings = {
+            async init() {
+                await this.load();
+            },
+            async load() {
+                const settings = await Storage.get('settings', 'store') || {};
+                const form = document.getElementById('settingsForm');
+
+                if (settings.storeName) form.storeName.value = settings.storeName;
+                if (settings.storeAddress) form.storeAddress.value = settings.storeAddress;
+                if (settings.storePhone) form.storePhone.value = settings.storePhone;
+                if (settings.storeWhatsapp) form.storeWhatsapp.value = settings.storeWhatsapp;
+
+                // Load Logo
+                if (settings.logoBase64) {
+                    const img = document.getElementById('logoPreview');
+                    img.src = settings.logoBase64;
+                    img.style.display = 'block';
+                }
+            },
+            previewLogo(input) {
+                if (input.files && input.files[0]) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        document.getElementById('logoPreview').src = e.target.result;
+                        document.getElementById('logoPreview').style.display = 'block';
+                    }
+                    reader.readAsDataURL(input.files[0]);
+                }
+            },
+            async save(e) {
+                e.preventDefault();
+                Components.showLoading('Menyimpan...');
+
+                const form = e.target;
+
+                // Proses logo ke base64
+                let logoBase64 = null;
+                const logoFile = document.getElementById('logoInput').files[0];
+
+                if (logoFile) {
+                    logoBase64 = await new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = (e) => resolve(e.target.result);
+                        reader.readAsDataURL(logoFile);
+                    });
+                } else {
+                    // Ambil logo lama jika tidak upload baru
+                    const oldSettings = await Storage.get('settings', 'store');
+                    logoBase64 = oldSettings?.logoBase64;
+                }
+
+                const data = {
+                    key: 'store',
+                    storeName: form.storeName.value,
+                    storeAddress: form.storeAddress.value,
+                    storePhone: form.storePhone.value,
+                    storeWhatsapp: form.storeWhatsapp.value,
+                    logoBase64: logoBase64
+                };
+
+                await Storage.set('settings', data);
+                Components.hideLoading();
+                Components.showToast('Pengaturan disimpan!', 'success');
+            }
+        };
+        window.Settings = Settings;
+    </script>
+</body>
+
+</html>

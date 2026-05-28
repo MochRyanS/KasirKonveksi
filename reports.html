@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laporan - KASIR KONVEKSI</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+
+<body>
+    <div id="sidebarContainer"></div>
+
+    <div class="main-content">
+        <div id="navbarContainer"></div>
+
+        <div class="content-area">
+            <div class="page-header animate-fadeInUp">
+                <div class="breadcrumb">
+                    <a href="dashboard.html">Home</a>
+                    <span>/</span>
+                    <span class="current">Laporan</span>
+                </div>
+                <h1 class="page-title">Laporan Transaksi</h1>
+                <p class="page-subtitle">Analisis performa bisnis Anda</p>
+            </div>
+
+            <div id="reportsContent">
+                <div class="stats-grid" style="margin-bottom: 24px;" id="reportStats">
+                    <!-- Stats loaded by JS -->
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Laporan Penjualan</h3>
+                        <div style="display: flex; gap: 12px;">
+                            <select class="form-input form-select" id="reportPeriod" onchange="Reports.loadReport()">
+                                <option value="today">Hari Ini</option>
+                                <option value="week">Minggu Ini</option>
+                                <option value="month" selected>Bulan Ini</option>
+                                <option value="year">Tahun Ini</option>
+                            </select>
+                            <button class="btn btn-secondary" onclick="Reports.exportReport()">
+                                ${Components.icons.download}
+                                Export
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table class="table data-table" id="reportTable">
+                            <thead>
+                                <tr>
+                                    <th>Tanggal</th>
+                                    <th>Invoice</th>
+                                    <th>Customer</th>
+                                    <th>Total</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="5" style="text-align: center; padding: 40px;">
+                                        Memuat data...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="mobileNavContainer"></div>
+    </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <script src="js/storage.js"></script>
+    <script src="js/components.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        const Reports = {
+            data: {
+                orders: [],
+                filtered: []
+            },
+
+            async init() {
+                await this.loadReport();
+            },
+
+            async loadReport() {
+                try {
+                    const orders = await Storage.getAll('orders');
+                    this.data.orders = orders;
+
+                    // Filter by period
+                    const period = document.getElementById('reportPeriod')?.value || 'month';
+                    const now = new Date();
+                    let startDate = new Date();
+
+                    switch (period) {
+                        case 'today':
+                            startDate.setHours(0, 0, 0, 0);
+                            break;
+                        case 'week':
+                            startDate.setDate(now.getDate() - 7);
+                            break;
+                        case 'month':
+                            startDate.setMonth(now.getMonth(), 1);
+                            break;
+                        case 'year':
+                            startDate.setMonth(0, 1);
+                            break;
+                    }
+
+                    this.data.filtered = orders.filter(o => new Date(o.createdAt) >= startDate);
+
+                    this.renderStats();
+                    this.renderTable();
+                } catch (error) {
+                    console.error('Error loading report:', error);
+                }
+            },
+
+            renderStats() {
+                const totalRevenue = this.data.filtered
+                    .filter(o => o.status === 'completed')
+                    .reduce((sum, o) => sum + (o.total || 0), 0);
+
+                const totalOrders = this.data.filtered.length;
+                const completedOrders = this.data.filtered.filter(o => o.status === 'completed').length;
+                const avgOrder = totalOrders > 0 ? totalRevenue / completedOrders : 0;
+
+                document.getElementById('reportStats').innerHTML = `
+                    ${Components.renderStatCard({
+                    icon: 'dollarSign',
+                    value: 'Rp ' + App.formatNumber(totalRevenue),
+                    label: 'Total Pemasukan',
+                    type: 'success'
+                })}
+                    ${Components.renderStatCard({
+                    icon: 'orders',
+                    value: totalOrders,
+                    label: 'Total Pesanan',
+                    type: 'info'
+                })}
+                    ${Components.renderStatCard({
+                    icon: 'check',
+                    value: completedOrders,
+                    label: 'Pesanan Selesai',
+                    type: 'success'
+                })}
+                    ${Components.renderStatCard({
+                    icon: 'trendingUp',
+                    value: 'Rp ' + App.formatNumber(Math.round(avgOrder)),
+                    label: 'Rata-rata Order',
+                    type: ''
+                })}
+                `;
+            },
+
+            renderTable() {
+                const tbody = document.querySelector('#reportTable tbody');
+
+                if (this.data.filtered.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="5">
+                                ${Components.renderEmptyState({
+                        icon: 'reports',
+                        title: 'Tidak Ada Data',
+                        description: 'Belum ada transaksi pada periode ini'
+                    })}
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                tbody.innerHTML = this.data.filtered
+                    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                    .map(order => `
+                        <tr>
+                            <td>${App.formatDate(order.createdAt)}</td>
+                            <td><span class="font-mono">${order.invoiceNumber}</span></td>
+                            <td>${order.customerName || '-'}</td>
+                            <td class="amount">Rp ${App.formatNumber(order.total)}</td>
+                            <td><span class="status-indicator status-${order.status}">${Components.getStatusLabel(order.status)}</span></td>
+                        </tr>
+                    `).join('');
+            },
+
+            exportReport() {
+                Components.showToast('Fitur export akan segera tersedia', 'info');
+            }
+        };
+
+        window.Reports = Reports;
+    </script>
+</body>
+
+</html>

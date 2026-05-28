@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pesanan - KASIR KONVEKSI</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+
+<body>
+    <div id="sidebarContainer"></div>
+
+    <div class="main-content">
+        <div id="navbarContainer"></div>
+
+        <div class="content-area">
+            <div class="page-header animate-fadeInUp">
+                <div class="breadcrumb">
+                    <a href="dashboard.html">Home</a>
+                    <span>/</span>
+                    <span class="current">Pesanan</span>
+                </div>
+                <h1 class="page-title">Manajemen Pesanan</h1>
+                <p class="page-subtitle">Kelola semua pesanan customer Anda</p>
+            </div>
+
+            <div id="ordersContent"></div>
+        </div>
+
+        <div id="mobileNavContainer"></div>
+    </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <!-- PENTING: Pastikan urutan script ini benar -->
+    <script src="js/storage.js"></script>
+    <script src="js/components.js"></script>
+    <script src="js/app.js"></script>
+    <!-- Library PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Modul Invoice & Orders -->
+    <script src="js/invoice.js"></script>
+    <script src="js/orders.js"></script>
+</body>
+
+</html>

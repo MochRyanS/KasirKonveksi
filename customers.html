@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer - KASIR KONVEKSI</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+
+<body>
+    <div id="sidebarContainer"></div>
+
+    <div class="main-content">
+        <div id="navbarContainer"></div>
+
+        <div class="content-area">
+            <div class="page-header animate-fadeInUp">
+                <div class="breadcrumb">
+                    <a href="dashboard.html">Home</a>
+                    <span>/</span>
+                    <span class="current">Customer</span>
+                </div>
+                <h1 class="page-title">Data Customer</h1>
+                <p class="page-subtitle">Kelola database customer Anda</p>
+            </div>
+
+            <div id="customersContent">
+                <!-- Content loaded by JS -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Daftar Customer</h3>
+                    </div>
+                    <div class="table-container">
+                        <table class="table data-table" id="customersTable">
+                            <thead>
+                                <tr>
+                                    <th>Nama</th>
+                                    <th>Telepon</th>
+                                    <th>Alamat</th>
+                                    <th>Total Order</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="4" style="text-align: center; padding: 40px;">
+                                        Memuat data...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="mobileNavContainer"></div>
+    </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <script src="js/storage.js"></script>
+    <script src="js/components.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        const Customers = {
+            async init() {
+                await this.loadCustomers();
+            },
+
+            async loadCustomers() {
+                try {
+                    const customers = await Storage.getAll('customers');
+                    const orders = await Storage.getAll('orders');
+
+                    const tbody = document.querySelector('#customersTable tbody');
+
+                    if (customers.length === 0) {
+                        tbody.innerHTML = `
+                            <tr>
+                                <td colspan="4">
+                                    ${Components.renderEmptyState({
+                            icon: 'customers',
+                            title: 'Belum Ada Customer',
+                            description: 'Customer akan muncul saat Anda membuat pesanan baru'
+                        })}
+                                </td>
+                            </tr>
+                        `;
+                        return;
+                    }
+
+                    tbody.innerHTML = customers.map(customer => {
+                        const customerOrders = orders.filter(o => o.customerId === customer.id);
+                        const totalSpent = customerOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+
+                        return `
+                            <tr>
+                                <td>
+                                    <div class="customer-cell">
+                                        <div class="customer-avatar">${customer.name ? customer.name.charAt(0).toUpperCase() : 'C'}</div>
+                                        <div>
+                                            <div class="customer-name">${customer.name || '-'}</div>
+                                            ${customer.company ? `<div class="customer-phone">${customer.company}</div>` : ''}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>${customer.phone || '-'}</td>
+                                <td>${customer.address || '-'}</td>
+                                <td>
+                                    <div style="font-family: var(--font-mono); font-weight: 600;">Rp ${App.formatNumber(totalSpent)}</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-muted);">${customerOrders.length} pesanan</div>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+
+                } catch (error) {
+                    console.error('Error loading customers:', error);
+                }
+            }
+        };
+
+        window.Customers = Customers;
+    </script>
+</body>
+
+</html>
