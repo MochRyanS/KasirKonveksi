@@ -131,7 +131,7 @@ const Invoice = {
         } finally { Components.hideLoading(); }
     },
 
-    // 2. STRUK ADMIN
+    // 2. STRUK ADMIN (SYNC DENGAN DATA PRODUK TERBARU)
     async printAdminInvoice(orderId) {
         Components.showLoading('Generating...');
         try {
@@ -148,6 +148,7 @@ const Invoice = {
 
             let y = 50;
 
+            // Info Customer (Tetap dari data pesanan)
             doc.setFillColor(240, 240, 240); doc.rect(15, y, 85, 35, 'F');
             doc.setFont('helvetica', 'bold'); doc.text('Customer:', 20, y + 7);
             doc.setFont('helvetica', 'normal');
@@ -162,32 +163,51 @@ const Invoice = {
 
             const items = order.items || [];
             let totalCost = 0;
+            let calculatedProfit = 0;
 
-            items.forEach(item => {
-                doc.text(`${item.productName} (${item.size})`, 15, y); y += 5;
+            // LOOP ITEM DENGAN FETCH DATA PRODUK TERBARU
+            for (const item of items) {
+                // 1. Ambil data produk terbaru dari database berdasarkan ID
+                const currentProduct = await Storage.get('products', item.productId);
 
+                // 2. Gunakan nama produk terbaru jika ada, jika tidak pakai nama di pesanan
+                const productName = currentProduct ? currentProduct.name : item.productName;
+                // 3. Gunakan harga modal terbaru jika ada
+                const currentCostPrice = currentProduct ? (currentProduct.costPrice || 0) : (item.pricePerUnit * 0.6);
+
+                // Tampilkan Nama Produk & Ukuran
+                doc.text(`${productName} (${item.size})`, 15, y); y += 5;
+
+                // Tampilkan Catatan
                 if (item.notes) {
                     doc.setFontSize(8); doc.setTextColor(100, 100, 100);
                     doc.text(`Catatan: ${item.notes}`, 15, y);
                     doc.setFontSize(9); doc.setTextColor(0, 0, 0); y += 5;
                 }
 
-                const cost = (item.pricePerUnit * 0.6) * item.quantity;
-                totalCost += cost;
-                doc.text(`${item.quantity} pcs x Rp ${App.formatNumber(item.pricePerUnit)}`, 150, y - (item.notes ? 0 : 5), { align: 'right' });
+                // Hitung Modal & Subtotal
+                const itemCost = currentCostPrice * item.quantity;
+                totalCost += itemCost;
+
+                // Tampilkan Harga Jual & Modal per item
+                doc.setFontSize(8); doc.setTextColor(100, 100, 100);
+                doc.text(`Modal: Rp ${App.formatNumber(itemCost)}`, 150, y - (item.notes ? 0 : 5), { align: 'right' });
+                doc.setTextColor(0, 0, 0);
+
                 y += 5;
-            });
+            }
+
+            // Hitung Profit Final
+            calculatedProfit = order.total - totalCost;
 
             y += 10;
             doc.setFillColor(20, 20, 30); doc.rect(15, y, 180, 28, 'F');
             doc.setTextColor(255, 255, 255);
 
-            const profit = order.total - totalCost;
-
             doc.text('ANALISIS KEUANGAN', 20, y + 10);
-            doc.text(`Modal: ${this.formatRupiah(totalCost)}`, 20, y + 18);
+            doc.text(`Total Modal: ${this.formatRupiah(totalCost)}`, 20, y + 18);
             doc.setTextColor(0, 212, 170);
-            doc.text(`Profit: ${this.formatRupiah(profit)}`, 150, y + 18);
+            doc.text(`Profit: ${this.formatRupiah(calculatedProfit)}`, 150, y + 18);
 
             doc.save(`Internal_${order.invoiceNumber}.pdf`);
             Components.showToast('PDF Admin diunduh', 'success');
